@@ -136,7 +136,7 @@ export default function AIAssistant() {
             <Bot size={20} />
             <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white" />
           </div>
-          <span className="text-sm font-semibold">Ask MedBridge AI</span>
+          <span className="text-sm font-semibold">Ask Charlie</span>
         </button>
       )}
 
@@ -151,7 +151,7 @@ export default function AIAssistant() {
               <Bot size={17} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-none">MedBridge AI</p>
+              <p className="text-sm font-semibold leading-none">Charlie</p>
               <p className="text-[11px] text-blue-200 mt-0.5">Powered by Mistral + MedlinePlus</p>
             </div>
             <div className="flex items-center gap-1">
@@ -181,7 +181,7 @@ export default function AIAssistant() {
                 <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-3">
                   <Bot size={28} className="text-blue-500" />
                 </div>
-                <p className="text-sm font-semibold text-slate-800 mb-1">Your personal health assistant</p>
+                <p className="text-sm font-semibold text-slate-800 mb-1">Hi, I'm Charlie</p>
                 <p className="text-xs text-slate-500 max-w-[260px]">
                   Ask me anything about your medications, symptoms, or diagnosis. I use MedlinePlus to give you accurate, reliable answers.
                 </p>

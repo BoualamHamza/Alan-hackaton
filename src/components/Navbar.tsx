@@ -5,8 +5,8 @@ import { useState, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   FolderHeart, LayoutDashboard, FolderOpen, Settings,
-  LogOut, Activity, Play, Calendar, BookOpen, Gamepad2,
-  Upload, ArrowLeft, User, Bell, Paperclip,
+  Activity, Play, BookOpen, Gamepad2,
+  ArrowLeft, Paperclip, Bell, LogOut,
 } from 'lucide-react';
 import { mockCases } from '@/lib/mockData';
 import { getCase } from '@/lib/api';
@@ -21,11 +21,9 @@ const mainNav = [
 const caseTabs = [
   { id: 'analytics', label: 'Analytics', icon: Activity },
   { id: 'videos', label: 'Videos', icon: Play },
-  { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'articles', label: 'Articles', icon: BookOpen },
   { id: 'game', label: 'Game', icon: Gamepad2 },
   { id: 'documents', label: 'Documents', icon: Paperclip },
-  { id: 'import', label: 'Import Data', icon: Upload },
 ];
 
 export default function Sidebar() {

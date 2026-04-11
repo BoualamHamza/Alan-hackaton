@@ -3,26 +3,24 @@
 import { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import {
-  Activity, Play, Calendar, BookOpen,
+  Activity, Play, BookOpen,
   Gamepad2, Upload, TrendingUp, TrendingDown,
-  Minus, Clock, FileText, ExternalLink, CheckSquare, Square,
-  Star, Zap, Heart, Brain, Dumbbell, Apple, ChevronRight,
-  Paperclip, Mic, Trash2, Eye, Loader2, AlertCircle, Video
+  Minus, FileText, ExternalLink, CheckSquare, Square,
+  Star, Zap, Heart, Brain, Dumbbell, Apple,
+  Paperclip, Mic, Trash2, Eye, Loader2, AlertCircle, Video,
 } from 'lucide-react';
 import { mockCases } from '@/lib/mockData';
 import { getCase, API_BASE } from '@/lib/api';
 import { VideoStatus, VideoInfo } from '@/types';
 
-type TabId = 'analytics' | 'videos' | 'calendar' | 'articles' | 'game' | 'documents' | 'import';
+type TabId = 'analytics' | 'videos' | 'articles' | 'game' | 'documents';
 
 const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'analytics', label: 'Analytics', icon: <Activity size={16} /> },
   { id: 'videos', label: 'Videos', icon: <Play size={16} /> },
-  { id: 'calendar', label: 'Calendar', icon: <Calendar size={16} /> },
   { id: 'articles', label: 'Articles', icon: <BookOpen size={16} /> },
   { id: 'game', label: 'Game', icon: <Gamepad2 size={16} /> },
   { id: 'documents', label: 'Documents', icon: <Paperclip size={16} /> },
-  { id: 'import', label: 'Import Data', icon: <Upload size={16} /> },
 ];
 
 // ─── Tab content components ────────────────────────────────────────────────
@@ -291,185 +289,94 @@ function VideosTab({ caseId }: { caseId: string }) {
   return <VideosLoading />;
 }
 
-function CalendarTab() {
-  const today = new Date();
-  const month = today.toLocaleString('default', { month: 'long', year: 'numeric' });
+const ASSISTANT_URL = process.env.NEXT_PUBLIC_ASSISTANT_URL ?? 'http://localhost:8001';
 
-  const events = [
-    { date: 15, label: 'MRI Scan', type: 'appointment', time: '9:00 AM' },
-    { date: 18, label: 'PT Session', type: 'therapy', time: '2:30 PM' },
-    { date: 22, label: 'Follow-up', type: 'appointment', time: '11:00 AM' },
-    { date: 25, label: 'PT Session', type: 'therapy', time: '2:30 PM' },
-    { date: 28, label: 'Medication Review', type: 'reminder', time: '—' },
-  ];
-
-  const typeConfig: Record<string, { color: string; dot: string }> = {
-    appointment: { color: 'bg-blue-50 text-blue-700 border-blue-200', dot: 'bg-blue-500' },
-    therapy: { color: 'bg-emerald-50 text-emerald-700 border-emerald-200', dot: 'bg-emerald-500' },
-    reminder: { color: 'bg-amber-50 text-amber-700 border-amber-200', dot: 'bg-amber-500' },
-  };
-
-  // Mini calendar grid
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-  const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).getDay();
-  const eventDays = new Set(events.map((e) => e.date));
-
-  const cells = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-
-  return (
-    <div className="space-y-6">
-      {/* Calendar */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-slate-700">{month}</h3>
-          <div className="flex gap-1">
-            <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-              <ChevronRight size={14} className="text-slate-400 rotate-180" />
-            </button>
-            <button className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
-              <ChevronRight size={14} className="text-slate-400" />
-            </button>
-          </div>
-        </div>
-        <div className="grid grid-cols-7 gap-1">
-          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
-            <div key={d} className="text-center text-xs font-medium text-slate-400 py-1">{d}</div>
-          ))}
-          {cells.map((day, i) => (
-            <div
-              key={i}
-              className={`aspect-square flex flex-col items-center justify-center rounded-lg text-xs transition-all ${
-                day === null
-                  ? ''
-                  : day === today.getDate()
-                  ? 'bg-blue-600 text-white font-semibold'
-                  : eventDays.has(day as number)
-                  ? 'bg-blue-50 text-blue-700 font-medium cursor-pointer hover:bg-blue-100'
-                  : 'text-slate-600 hover:bg-slate-50 cursor-pointer'
-              }`}
-            >
-              {day}
-              {day !== null && eventDays.has(day as number) && day !== today.getDate() && (
-                <span className="w-1 h-1 rounded-full bg-blue-500 mt-0.5" />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Upcoming events */}
-      <div>
-        <h3 className="text-sm font-semibold text-slate-700 mb-3">Upcoming Events</h3>
-        <div className="space-y-2">
-          {events.map((ev, i) => {
-            const cfg = typeConfig[ev.type];
-            return (
-              <div
-                key={i}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${cfg.color} transition-all hover:shadow-sm`}
-              >
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">{ev.label}</p>
-                  <p className="text-xs opacity-70 mt-0.5">April {ev.date} · {ev.time}</p>
-                </div>
-                <Clock size={13} className="opacity-50" />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-4 text-xs text-slate-500">
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-500" />Appointments</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500" />Therapy</span>
-        <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" />Reminders</span>
-      </div>
-    </div>
-  );
+interface MedArticle {
+  title: string;
+  url: string;
+  excerpt: string;
+  source: string;
 }
 
-function ArticlesTab({ specialty }: { specialty: string }) {
-  const articles = [
-    {
-      title: `Living with ${specialty} Conditions: A Complete Patient Guide`,
-      source: 'Mayo Clinic',
-      readTime: '8 min read',
-      date: 'Apr 2026',
-      excerpt: 'Comprehensive overview of managing your condition day-to-day, including lifestyle modifications, treatment adherence, and mental health considerations.',
-      tags: ['Patient Guide', 'Lifestyle'],
-      icon: '📖',
-    },
-    {
-      title: 'Understanding Your Diagnosis: Key Questions to Ask Your Doctor',
-      source: 'Harvard Health',
-      readTime: '5 min read',
-      date: 'Mar 2026',
-      excerpt: 'Before your next appointment, prepare yourself with the right questions to ensure you fully understand your diagnosis and treatment plan.',
-      tags: ['Communication', 'Doctors'],
-      icon: '❓',
-    },
-    {
-      title: 'Nutrition and Recovery: Evidence-Based Dietary Strategies',
-      source: 'Cleveland Clinic',
-      readTime: '12 min read',
-      date: 'Apr 2026',
-      excerpt: 'Learn which foods support healing and which may exacerbate symptoms, backed by current clinical research.',
-      tags: ['Nutrition', 'Research'],
-      icon: '🥦',
-    },
-    {
-      title: 'The Role of Exercise in Managing Chronic Conditions',
-      source: 'WebMD',
-      readTime: '7 min read',
-      date: 'Mar 2026',
-      excerpt: 'Physical activity can significantly improve outcomes for many chronic conditions. Here\'s how to get started safely.',
-      tags: ['Exercise', 'Wellness'],
-      icon: '🏃',
-    },
-  ];
+function ArticlesTab({ caseTitle, specialty, symptoms }: { caseTitle: string; specialty: string; symptoms: string[] }) {
+  const [articles, setArticles] = useState<MedArticle[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const query = [specialty, ...symptoms, caseTitle].filter(Boolean).join(' ');
+    fetch(`${ASSISTANT_URL}/articles?query=${encodeURIComponent(query)}&k=5`)
+      .then((r) => r.json())
+      .then((data) => { setArticles(data); setLoading(false); })
+      .catch(() => { setError(true); setLoading(false); });
+  }, [caseTitle, specialty, symptoms.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-slate-500">
-        Evidence-based articles curated to help you understand and manage your health.
-      </p>
-      {articles.map((a, i) => (
-        <div
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">
+          MedlinePlus articles curated for your case.
+        </p>
+        {articles && (
+          <span className="text-xs text-slate-400">{articles.length} results</span>
+        )}
+      </div>
+
+      {/* Loading skeletons */}
+      {loading && (
+        <div className="space-y-3">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="bg-white rounded-xl border border-slate-200 p-5 animate-pulse">
+              <div className="h-3 bg-slate-100 rounded w-1/4 mb-3" />
+              <div className="h-4 bg-slate-100 rounded w-3/4 mb-2" />
+              <div className="h-3 bg-slate-100 rounded w-full mb-1" />
+              <div className="h-3 bg-slate-100 rounded w-5/6" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <AlertCircle size={15} className="text-amber-500 flex-shrink-0" />
+          <p className="text-sm text-amber-700">Could not load articles — Charlie assistant may be offline.</p>
+        </div>
+      )}
+
+      {/* Articles */}
+      {articles && articles.map((a, i) => (
+        <a
           key={i}
-          className="bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer group"
+          href={a.url || '#'}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block bg-white rounded-xl border border-slate-200 p-5 hover:border-blue-300 hover:shadow-md transition-all group"
         >
           <div className="flex items-start gap-4">
-            <div className="text-2xl mt-0.5">{a.icon}</div>
+            <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <BookOpen size={16} className="text-blue-500" />
+            </div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2 flex-wrap">
-                {a.tags.map((tag) => (
-                  <span key={tag} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-                    {tag}
-                  </span>
-                ))}
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full font-medium">
+                  {specialty}
+                </span>
+                <span className="text-xs bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
+                  {a.source}
+                </span>
               </div>
               <h4 className="text-sm font-semibold text-slate-900 mb-2 group-hover:text-blue-700 transition-colors leading-snug">
                 {a.title}
               </h4>
-              <p className="text-sm text-slate-500 leading-relaxed mb-3 line-clamp-2">{a.excerpt}</p>
-              <div className="flex items-center justify-between text-xs text-slate-400">
-                <div className="flex items-center gap-3">
-                  <span className="font-medium text-slate-600">{a.source}</span>
-                  <span>·</span>
-                  <span>{a.readTime}</span>
-                  <span>·</span>
-                  <span>{a.date}</span>
-                </div>
-                <ExternalLink size={12} className="group-hover:text-blue-500 transition-colors" />
+              <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">{a.excerpt}</p>
+              <div className="flex items-center gap-1 mt-3 text-xs text-slate-400 group-hover:text-blue-500 transition-colors">
+                <ExternalLink size={11} />
+                <span>Read on MedlinePlus</span>
               </div>
             </div>
           </div>
-        </div>
+        </a>
       ))}
     </div>
   );
@@ -713,44 +620,6 @@ function DocumentsTab() {
   );
 }
 
-function ImportDataTab() {
-  const sources = [
-    { name: 'Apple Health', icon: <Heart size={20} className="text-red-500" />, desc: 'Import activity, heart rate & sleep data' },
-    { name: 'Google Fit', icon: <Activity size={20} className="text-blue-500" />, desc: 'Sync fitness and wellness metrics' },
-    { name: 'Fitbit', icon: <Dumbbell size={20} className="text-teal-500" />, desc: 'Steps, calories, and workout history' },
-    { name: 'MyFitnessPal', icon: <Apple size={20} className="text-green-500" />, desc: 'Nutrition and dietary tracking' },
-    { name: 'Withings', icon: <Brain size={20} className="text-purple-500" />, desc: 'Weight, blood pressure & ECG data' },
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-base font-semibold text-slate-900 mb-1">Connect Health Apps</h2>
-        <p className="text-sm text-slate-500">Sync data from your fitness and health trackers to enrich your case insights.</p>
-      </div>
-      <div className="space-y-2.5">
-        {sources.map((s) => (
-          <div
-            key={s.name}
-            className="flex items-center gap-4 px-4 py-3.5 bg-white rounded-xl border border-slate-200 hover:border-slate-300 transition-all"
-          >
-            <div className="w-9 h-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center flex-shrink-0">
-              {s.icon}
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-slate-800">{s.name}</p>
-              <p className="text-xs text-slate-400">{s.desc}</p>
-            </div>
-            <button className="px-3.5 py-1.5 text-xs font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
-              Connect
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // ─── Main page ─────────────────────────────────────────────────────────────
 
 export default function CaseDashboard() {
@@ -789,11 +658,9 @@ export default function CaseDashboard() {
       {/* Tab content */}
       {activeTab === 'analytics' && <AnalyticsTab specialty={caseData.specialty} />}
       {activeTab === 'videos' && <VideosTab caseId={caseId} />}
-      {activeTab === 'calendar' && <CalendarTab />}
-      {activeTab === 'articles' && <ArticlesTab specialty={caseData.specialty} />}
+      {activeTab === 'articles' && <ArticlesTab caseTitle={caseData.title} specialty={caseData.specialty} symptoms={caseData.symptoms} />}
       {activeTab === 'game' && <GameTab />}
       {activeTab === 'documents' && <DocumentsTab />}
-      {activeTab === 'import' && <ImportDataTab />}
     </div>
   );
 }

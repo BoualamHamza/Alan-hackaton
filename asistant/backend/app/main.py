@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import prescription, medical_image, chat
+from app.routers import medical_image, chat, articles
 
 app = FastAPI(
     title="MedBridge AI Assistant",
@@ -15,9 +15,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(prescription.router)
 app.include_router(medical_image.router)
 app.include_router(chat.router)
+app.include_router(articles.router)
 
 
 @app.get("/health")

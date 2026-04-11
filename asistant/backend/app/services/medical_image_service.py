@@ -12,7 +12,7 @@ import base64
 import pdfplumber
 from pdf2image import convert_from_bytes
 from PIL import Image
-from mistralai import Mistral
+from mistralai.client import Mistral
 
 try:
     import torch
@@ -23,7 +23,22 @@ except ImportError:
 
 from app.core.config import settings
 from app.services.vector_store import retrieve
-from app.services.prescription_service import call_with_retry
+
+
+def call_with_retry(fn, *args, **kwargs):
+    """Calls a Mistral SDK function, retrying with backoff on rate limit."""
+    import time
+    for attempt in range(8):
+        try:
+            return fn(*args, **kwargs)
+        except Exception as e:
+            if "429" in str(e) or "rate_limited" in str(e):
+                wait = 30 * (attempt + 1)
+                print(f"Rate limit hit, waiting {wait}s...")
+                time.sleep(wait)
+            else:
+                raise
+    raise RuntimeError("Mistral API rate limit — max retries exceeded.")
 
 MEDGEMMA_MODEL_ID = "google/medgemma-4b-it"
 PIXTRAL_MODEL = "pixtral-large-latest"
