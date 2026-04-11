@@ -36,3 +36,8 @@ htmlcov/
 
 # macOS
 .DS_Store
+
+# Données volumineuses du service RAG (collègue — ne pas versionner)
+data/chroma/
+data/medlineplus/*.xml
+data/medlineplus/*.json

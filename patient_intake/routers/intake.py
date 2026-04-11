@@ -9,12 +9,10 @@ from patient_intake.models.schemas import (
     MedicalReport,
     MessageRequest,
     MessageResponse,
-    RagRequest,
-    RagResponse,
     SessionResponse,
     UploadResponse,
 )
-from patient_intake.services import document_service, intake_service, rag_service, report_service
+from patient_intake.services import document_service, intake_service, report_service
 from patient_intake.storage.file_storage import storage as default_storage
 
 router = APIRouter(prefix="/api/v1/patient-intake", tags=["Patient Intake"])
@@ -109,19 +107,3 @@ async def get_report(
     return await report_service.get_report(session_id, db)
 
 
-@router.post(
-    "/{session_id}/rag",
-    response_model=RagResponse,
-    summary="Poser une question au service RAG médical (MedBridge)",
-)
-async def ask_rag(
-    session_id: str,
-    body: RagRequest,
-):
-    """
-    Proxy vers le service RAG du collègue (branche AssistantIA).
-    Utilisé quand le patient n'a pas encore consulté de médecin (action='connect_rag').
-    Le session_id est partagé pour maintenir la continuité de conversation.
-    Nécessite que le service AssistantIA tourne sur RAG_SERVICE_URL (défaut: localhost:8001).
-    """
-    return await rag_service.ask_rag(session_id, body.message)

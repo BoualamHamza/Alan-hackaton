@@ -37,8 +37,6 @@ async def process_message(session_id: str, text: str, db: AsyncSession) -> Messa
     mistral_data = await _call_mistral(messages)
     response_text = mistral_data.get("response", "")
     is_complete = bool(mistral_data.get("is_intake_complete", False))
-    has_consulted = mistral_data.get("has_consulted")  # True | False | None
-    action = mistral_data.get("action")  # null | "connect_rag" | "book_appointment" | "connect_rag_and_book"
 
     # Persist both turns
     db.add(ConversationMessage(
@@ -61,8 +59,6 @@ async def process_message(session_id: str, text: str, db: AsyncSession) -> Messa
         session_id=session_id,
         response_text=response_text,
         is_intake_complete=is_complete,
-        has_consulted=has_consulted,
-        action=action,
     )
 
 

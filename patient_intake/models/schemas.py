@@ -31,24 +31,6 @@ class MessageResponse(BaseModel):
     session_id: str
     response_text: str
     is_intake_complete: bool = False
-    has_consulted: Optional[bool] = None
-    # Routing signal for the frontend:
-    # null = continue | "connect_rag" | "book_appointment" | "connect_rag_and_book"
-    action: Optional[str] = None
-
-
-# ---------------------------------------------------------------------------
-# RAG proxy (service AssistantIA du collègue)
-# ---------------------------------------------------------------------------
-
-class RagRequest(BaseModel):
-    message: str
-
-
-class RagResponse(BaseModel):
-    session_id: str
-    response: str
-    sources: List[str] = Field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
