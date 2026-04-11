@@ -42,6 +42,7 @@ async def request_transcription(upload_url: str) -> str:
         "summarization": True,
         "summary_model": "informative",
         "summary_type": "bullets",
+        "speech_models": ["universal-2"],
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
