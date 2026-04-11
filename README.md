@@ -1,4 +1,4 @@
-# MedBridge — AI Patient Assistant
+# Charly— AI Patient Assistant
 
 > Built at the Mistral AI x Alan Hackathon 2026
 
