@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedReminder — Analyseur d'ordonnances</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #F0F4FF;
+            color: #1a1a2e;
+            min-height: 100vh;
+        }
+
+        header {
+            background: #2563EB;
+            color: white;
+            padding: 1.25rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 2px 12px rgba(37,99,235,0.3);
+        }
+        .logo {
+            width: 42px; height: 42px;
+            background: white;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.4rem;
+        }
+        header h1 { font-size: 1.4rem; font-weight: 700; }
+        header p  { font-size: 0.82rem; opacity: 0.8; margin-top: 0.1rem; }
+
+        main {
+            max-width: 860px;
+            margin: 2rem auto;
+            padding: 0 1.5rem 4rem;
+        }
+
+        /* ── Upload ── */
+        .upload-zone {
+            background: white;
+            border: 2.5px dashed #93C5FD;
+            border-radius: 18px;
+            padding: 3.5rem 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+        }
+        .upload-zone:hover, .upload-zone.dragover {
+            border-color: #2563EB;
+            background: #EFF6FF;
+        }
+        .upload-zone h2  { font-size: 1.2rem; font-weight: 600; color: #1E293B; margin: .75rem 0 .4rem; }
+        .upload-zone p   { color: #64748B; font-size: .875rem; }
+        .upload-icon     { font-size: 3rem; }
+        .upload-btn {
+            display: inline-block;
+            margin-top: 1.25rem;
+            background: #2563EB;
+            color: white;
+            padding: .7rem 2rem;
+            border-radius: 9px;
+            font-size: .95rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background .2s;
+        }
+        .upload-btn:hover { background: #1D4ED8; }
+        #fileInput { display: none; }
+
+        /* ── Loading ── */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 3.5rem;
+            background: white;
+            border-radius: 18px;
+        }
+        .spinner {
+            width: 48px; height: 48px;
+            border: 4px solid #E2E8F0;
+            border-top-color: #2563EB;
+            border-radius: 50%;
+            animation: spin .8s linear infinite;
+            margin: 0 auto 1.25rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading p       { color: #64748B; font-size: .95rem; }
+        .loading .sub    { font-size: .8rem; color: #94A3B8; margin-top: .35rem; }
+
+        /* ── Error ── */
+        .error-box {
+            display: none;
+            background: #FEF2F2;
+            border: 1px solid #FECACA;
+            color: #DC2626;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.25rem;
+            font-size: .875rem;
+        }
+
+        /* ── Results ── */
+        #results { display: none; }
+
+        .info-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            gap: 2.5rem;
+            flex-wrap: wrap;
+        }
+        .info-item label {
+            font-size: .7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .06em;
+            color: #94A3B8; display: block; margin-bottom: .2rem;
+        }
+        .info-item span { font-size: .95rem; color: #1E293B; font-weight: 500; }
+
+        .section-title {
+            font-size: 1rem; font-weight: 700; color: #1E293B;
+            margin: 1.5rem 0 .85rem;
+            display: flex; align-items: center; gap: .45rem;
+        }
+
+        /* ── Med cards ── */
+        .meds-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(255px, 1fr));
+            gap: 1rem;
+        }
+        .med-card {
+            background: white;
+            border-radius: 14px;
+            padding: 1.25rem;
+            border-left: 4px solid #2563EB;
+        }
+        .med-name  { font-weight: 700; font-size: .9rem; color: #1E293B; margin-bottom: .5rem; line-height: 1.35; }
+        .med-badge {
+            display: inline-block;
+            background: #EFF6FF; color: #2563EB;
+            font-size: .72rem; font-weight: 700;
+            padding: .2rem .65rem; border-radius: 20px; margin-bottom: .75rem;
+        }
+        .med-detail {
+            font-size: .8rem; color: #64748B;
+            margin-top: .3rem;
+            display: flex; align-items: flex-start; gap: .4rem;
+        }
+        .med-detail .icon { flex-shrink: 0; }
+
+        /* ── Reminders ── */
+        .reminders-list {
+            background: white;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .reminder-item {
+            display: flex; align-items: center;
+            padding: 1rem 1.5rem; gap: 1rem;
+            border-bottom: 1px solid #F1F5F9;
+            transition: background .15s;
+        }
+        .reminder-item:last-child { border-bottom: none; }
+        .reminder-item:hover { background: #F8FAFC; }
+        .reminder-time {
+            background: #EFF6FF; color: #2563EB;
+            font-weight: 700; font-size: .95rem;
+            padding: .5rem .8rem; border-radius: 10px;
+            min-width: 68px; text-align: center; flex-shrink: 0;
+        }
+        .reminder-info { flex: 1; }
+        .reminder-label { font-weight: 600; font-size: .875rem; color: #1E293B; }
+        .reminder-meta  { font-size: .75rem; color: #94A3B8; margin-top: .2rem; }
+        .reminder-dot   { width: 8px; height: 8px; border-radius: 50%; background: #10B981; flex-shrink: 0; }
+
+        /* ── Buttons ── */
+        .cal-btn {
+            display: flex; align-items: center; justify-content: center; gap: .75rem;
+            width: 100%;
+            background: linear-gradient(135deg, #10B981, #059669);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 14px;
+            font-size: 1rem; font-weight: 700;
+            cursor: pointer; border: none;
+            transition: transform .15s, box-shadow .15s;
+            box-shadow: 0 4px 14px rgba(16,185,129,.35);
+            margin-top: 1.5rem;
+        }
+        .cal-btn:hover  { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(16,185,129,.45); }
+        .cal-btn:active { transform: translateY(0); }
+        .cal-btn:disabled { opacity: .7; cursor: not-allowed; transform: none; }
+
+        .new-btn {
+            display: block; width: 100%;
+            background: none; border: 2px solid #E2E8F0;
+            color: #64748B; padding: .8rem; border-radius: 10px;
+            font-size: .875rem; cursor: pointer; margin-top: 1rem;
+            transition: border-color .2s, color .2s;
+        }
+        .new-btn:hover { border-color: #2563EB; color: #2563EB; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="logo">💊</div>
+    <div>
+        <h1>MedReminder</h1>
+        <p>Analyseur d'ordonnances médicales</p>
+    </div>
+</header>
+
+<main>
+
+    <!-- Upload zone -->
+    <div class="upload-zone" id="uploadZone">
+        <div class="upload-icon">📋</div>
+        <h2>Déposez votre ordonnance</h2>
+        <p>Formats acceptés : JPG, PNG, PDF &nbsp;·&nbsp; Max 10 MB</p>
+        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+            Choisir un fichier
+        </button>
+        <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf">
+    </div>
+
+    <!-- Loading -->
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Analyse de l'ordonnance en cours…</p>
+        <p class="sub">Mistral extrait les médicaments et génère vos rappels</p>
+    </div>
+
+    <!-- Error -->
+    <div class="error-box" id="errorBox"></div>
+
+    <!-- Results -->
+    <div id="results">
+        <div class="info-card" id="infoCard"></div>
+
+        <div class="section-title">💊 Médicaments prescrits</div>
+        <div class="meds-grid" id="medsGrid"></div>
+
+        <div class="section-title">⏰ Rappels générés</div>
+        <div class="reminders-list" id="remindersList"></div>
+
+        <button class="cal-btn" id="calBtn">
+            📅 Ajouter tous les rappels à mon calendrier
+        </button>
+
+        <button class="new-btn" onclick="resetForm()">
+            ↩ Analyser une autre ordonnance
+        </button>
+    </div>
+
+</main>
+
+<script>
+    const API_BASE = "http://localhost:8000";
+    let lastResult = null;
+
+    // Card border colors cycling through medications
+    const COLORS = ["#2563EB", "#7C3AED", "#DB2777", "#D97706", "#059669"];
+
+    // ── Drag & drop ──────────────────────────────────────────────────────────
+    const uploadZone = document.getElementById("uploadZone");
+
+    uploadZone.addEventListener("dragover", e => {
+        e.preventDefault();
+        uploadZone.classList.add("dragover");
+    });
+    uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("dragover"));
+    uploadZone.addEventListener("drop", e => {
+        e.preventDefault();
+        uploadZone.classList.remove("dragover");
+        const file = e.dataTransfer.files[0];
+        if (file) analyzeFile(file);
+    });
+
+    document.getElementById("fileInput").addEventListener("change", e => {
+        if (e.target.files[0]) analyzeFile(e.target.files[0]);
+    });
+
+    // ── Analyze ──────────────────────────────────────────────────────────────
+    async function analyzeFile(file) {
+        show("loading");
+        hide("uploadZone");
+        hide("results");
+        hide("errorBox");
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const resp = await fetch(`${API_BASE}/analyze-prescription`, {
+                method: "POST",
+                body: formData,
+            });
+            const data = await resp.json();
+            if (!resp.ok) throw new Error(data.detail || "Erreur inconnue");
+
+            lastResult = data;
+            renderResults(data);
+            show("results");
+        } catch (err) {
+            showError(err.message);
+            show("uploadZone");
+        } finally {
+            hide("loading");
+        }
+    }
+
+    // ── Render results ───────────────────────────────────────────────────────
+    function renderResults(data) {
+        // Patient / doctor info
+        document.getElementById("infoCard").innerHTML = [
+            data.patient_name ? infoItem("Patient",  data.patient_name) : "",
+            data.doctor_name  ? infoItem("Médecin",  data.doctor_name)  : "",
+            data.date         ? infoItem("Date",     data.date)         : "",
+        ].join("");
+
+        // Medications
+        document.getElementById("medsGrid").innerHTML = data.medications.map((m, i) => `
+            <div class="med-card" style="border-left-color:${COLORS[i % COLORS.length]}">
+                <div class="med-name">${m.name}</div>
+                <div class="med-badge">${m.dosage}</div>
+                <div class="med-detail"><span class="icon">🔁</span><span>${m.frequency}</span></div>
+                ${m.duration     ? `<div class="med-detail"><span class="icon">📅</span><span>${m.duration}</span></div>` : ""}
+                ${m.instructions ? `<div class="med-detail"><span class="icon">ℹ️</span><span>${m.instructions}</span></div>` : ""}
+                ${m.side_effects?.length ? `<div class="med-detail"><span class="icon">⚠️</span><span>${m.side_effects.join(", ")}</span></div>` : ""}
+            </div>
+        `).join("");
+
+        // Reminders
+        document.getElementById("remindersList").innerHTML = data.reminders.map(r => `
+            <div class="reminder-item">
+                <div class="reminder-time">${r.time}</div>
+                <div class="reminder-info">
+                    <div class="reminder-label">${r.label}</div>
+                    <div class="reminder-meta">
+                        Chaque jour${r.end_date ? ` · jusqu'au ${r.end_date}` : ""}
+                    </div>
+                </div>
+                <div class="reminder-dot"></div>
+            </div>
+        `).join("");
+    }
+
+    function infoItem(label, value) {
+        return `<div class="info-item"><label>${label}</label><span>${value}</span></div>`;
+    }
+
+    // ── Calendar export ──────────────────────────────────────────────────────
+    document.getElementById("calBtn").addEventListener("click", async () => {
+        if (!lastResult) return;
+
+        const btn = document.getElementById("calBtn");
+        btn.textContent = "⏳ Génération en cours…";
+        btn.disabled = true;
+
+        try {
+            const resp = await fetch(`${API_BASE}/export-calendar`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    reminders: lastResult.reminders,
+                    medications: lastResult.medications,
+                }),
+            });
+
+            if (!resp.ok) throw new Error("Erreur lors de la génération du fichier calendrier");
+
+            const blob = await resp.blob();
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement("a");
+            a.href     = url;
+            a.download = "mes-medicaments.ics";
+            a.click();
+            URL.revokeObjectURL(url);
+
+            btn.textContent = "✅ Fichier téléchargé — ouvrez-le pour importer dans votre calendrier";
+            btn.style.background = "linear-gradient(135deg, #6366F1, #4F46E5)";
+        } catch (err) {
+            showError(err.message);
+            btn.textContent = "📅 Ajouter tous les rappels à mon calendrier";
+            btn.disabled = false;
+        }
+    });
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function show(id) { document.getElementById(id).style.display = id === "results" ? "block" : ""; }
+    function hide(id) { document.getElementById(id).style.display = "none"; }
+
+    function showError(msg) {
+        const box = document.getElementById("errorBox");
+        box.textContent = "⚠️ " + msg;
+        box.style.display = "block";
+    }
+
+    function resetForm() {
+        show("uploadZone");
+        hide("results");
+        hide("errorBox");
+        document.getElementById("fileInput").value = "";
+        const btn = document.getElementById("calBtn");
+        btn.textContent = "📅 Ajouter tous les rappels à mon calendrier";
+        btn.disabled = false;
+        btn.style.background = "";
+        lastResult = null;
+    }
+</script>
+
+</body>
+</html>

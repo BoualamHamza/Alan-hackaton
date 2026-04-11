@@ -1,0 +1,38 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Environnements
+.env
+.env.*
+venv/
+.venv/
+env/
+
+# DB locale
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads (fichiers patients — jamais en VCS)
+uploads/
+
+# Tests / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# macOS
+.DS_Store
