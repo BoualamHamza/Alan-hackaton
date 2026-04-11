@@ -38,6 +38,20 @@ class MessageResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# RAG proxy (service AssistantIA du collègue)
+# ---------------------------------------------------------------------------
+
+class RagRequest(BaseModel):
+    message: str
+
+
+class RagResponse(BaseModel):
+    session_id: str
+    response: str
+    sources: List[str] = Field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
 # File upload
 # ---------------------------------------------------------------------------
 

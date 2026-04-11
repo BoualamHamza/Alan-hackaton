@@ -9,3 +9,6 @@ STORAGE_PATH = os.getenv("STORAGE_PATH", "./uploads")
 
 ALLOWED_MIME_TYPES = {"image/jpeg", "image/png", "application/pdf"}
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20 MB
+
+# RAG service (collègue — branche AssistantIA)
+RAG_SERVICE_URL = os.getenv("RAG_SERVICE_URL", "http://localhost:8001")
