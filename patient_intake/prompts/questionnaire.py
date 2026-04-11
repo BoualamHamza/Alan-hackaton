@@ -32,5 +32,5 @@ IMPORTANT — répondre uniquement avec un objet JSON valide :
   "collected": ["diagnostic", "symptomes", "allergies", "antecedents", "mode_de_vie"]
 }
 
-Mettre "is_intake_complete" à true dès que tu as : diagnostic + symptômes principaux. C'est suffisant.
+Règle absolue : mettre "is_intake_complete" à true dès que le patient a mentionné UN diagnostic ET AU MOINS UN symptôme. Ne jamais poser plus d'une question de suivi. Si le premier message contient déjà un diagnostic et un symptôme, répondre directement avec is_intake_complete: true sans poser de question.
 """
