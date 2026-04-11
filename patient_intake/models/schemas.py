@@ -134,7 +134,7 @@ class ReportMetadata(BaseModel):
 
 class MedicationReminder(BaseModel):
     medication_name: str
-    dosage: str
+    dosage: Optional[str] = None
     time: str
     label: str
     recurrence: str

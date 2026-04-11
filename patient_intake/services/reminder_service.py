@@ -85,11 +85,12 @@ def build_reminders(medications: list[dict]) -> list[dict]:
         end_date = (today + timedelta(days=duration_days)).isoformat() if duration_days else None
 
         for slot_time, slot_label in schedule:
+            dosage = med.get("dosage") or ""
             reminders.append({
                 "medication_name": med.get("name", ""),
-                "dosage": med.get("dosage", ""),
+                "dosage": dosage or None,
                 "time": slot_time,
-                "label": f"{med.get('name', '')} {med.get('dosage', '')} — {slot_label}",
+                "label": f"{med.get('name', '')}{' ' + dosage if dosage else ''} — {slot_label}",
                 "recurrence": freq_key,
                 "start_date": today.isoformat(),
                 "end_date": end_date,

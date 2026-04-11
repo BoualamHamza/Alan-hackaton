@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from patient_intake.models.database import init_db
 from patient_intake.routers.intake import router as intake_router
+from wearable.router import router as wearable_router
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -323,6 +324,7 @@ app.add_middleware(
 )
 
 app.include_router(intake_router)
+app.include_router(wearable_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["Monitoring"])
