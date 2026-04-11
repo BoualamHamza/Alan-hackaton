@@ -11,6 +11,7 @@ from patient_intake.config import MISTRAL_API_KEY, MISTRAL_API_URL, MISTRAL_MODE
 from patient_intake.models.database import IntakeSession, MedicalReportDB, UploadedFile
 from patient_intake.models.schemas import MedicalReport
 from patient_intake.prompts.report_generation import REPORT_GENERATION_SYSTEM_PROMPT
+from patient_intake.services.reminder_service import build_reminders
 
 
 async def generate_report(session_id: str, db: AsyncSession) -> MedicalReport:
@@ -36,6 +37,10 @@ async def generate_report(session_id: str, db: AsyncSession) -> MedicalReport:
     completeness, missing = _compute_completeness(report_dict)
     report_dict["metadata"]["completeness_score"] = completeness
     report_dict["metadata"]["missing_info"] = missing
+
+    # Generate reminders from all medications found in documents + conversation
+    all_medications = _collect_all_medications(report_dict, session.files)
+    report_dict["reminders"] = build_reminders(all_medications)
 
     try:
         report = MedicalReport(**report_dict)
@@ -92,6 +97,40 @@ async def _load_session(session_id: str, db: AsyncSession) -> IntakeSession:
     if not session:
         raise HTTPException(status_code=404, detail=f"Session {session_id!r} introuvable")
     return session
+
+
+def _collect_all_medications(report_dict: dict, files: list[UploadedFile]) -> list[dict]:
+    """
+    Collecte tous les médicaments trouvés :
+    1. Dans le rapport généré par Mistral (treatments.current_medications)
+    2. Dans les documents uploadés extraits (prescriptions)
+    Déduplique par nom de médicament.
+    """
+    seen: set[str] = set()
+    medications: list[dict] = []
+
+    # From report
+    for med in (report_dict.get("treatments") or {}).get("current_medications") or []:
+        name = (med.get("name") or "").lower().strip()
+        if name and name not in seen:
+            seen.add(name)
+            medications.append(med)
+
+    # From extracted documents (prescriptions)
+    for f in files:
+        if f.extraction_status != "done" or not f.extracted_content:
+            continue
+        try:
+            data = json.loads(f.extracted_content)
+        except json.JSONDecodeError:
+            continue
+        for med in data.get("medications") or []:
+            name = (med.get("name") or "").lower().strip()
+            if name and name not in seen:
+                seen.add(name)
+                medications.append(med)
+
+    return medications
 
 
 def _build_context(session: IntakeSession) -> str:

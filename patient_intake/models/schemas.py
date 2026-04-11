@@ -132,12 +132,23 @@ class ReportMetadata(BaseModel):
 # Medical Report — root model (contrat d'interface avec les autres services)
 # ---------------------------------------------------------------------------
 
+class MedicationReminder(BaseModel):
+    medication_name: str
+    dosage: str
+    time: str
+    label: str
+    recurrence: str
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+
+
 class MedicalReport(BaseModel):
     patient_id: Optional[str] = None
     generated_at: str
     patient_profile: PatientProfile = Field(default_factory=PatientProfile)
     current_condition: CurrentCondition = Field(default_factory=CurrentCondition)
     treatments: Treatments = Field(default_factory=Treatments)
+    reminders: List[MedicationReminder] = Field(default_factory=list)
     lab_results: List[LabResult] = Field(default_factory=list)
     imaging: List[ImagingResult] = Field(default_factory=list)
     uploaded_documents: List[UploadedDocumentSummary] = Field(default_factory=list)
