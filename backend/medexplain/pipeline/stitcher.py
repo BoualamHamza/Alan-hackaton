@@ -37,13 +37,20 @@ def stitch(scene_clips: List[Tuple[int, str]], output_path: str) -> str:
 
 
 def _ffmpeg_concat(concat_file: str, output_path: str) -> None:
-    """Simple concat — all clips must have same resolution/codec (they do)."""
+    """
+    Concatenate clips. Video is stream-copied (fast). Audio is re-encoded to
+    a consistent 44100 Hz AAC so the Apple decoder never hits a sample-rate
+    discontinuity across avatar/visual scene boundaries.
+    """
     cmd = [
         "ffmpeg", "-y",
         "-f", "concat",
         "-safe", "0",
         "-i", concat_file,
-        "-c", "copy",
+        "-c:v", "copy",       # no video re-encode — fast
+        "-c:a", "aac",        # re-encode audio for consistency
+        "-ar", "44100",       # normalise sample rate across all clips
+        "-b:a", "192k",
         output_path,
     ]
     result = subprocess.run(cmd, capture_output=True)
@@ -52,7 +59,7 @@ def _ffmpeg_concat(concat_file: str, output_path: str) -> None:
 
 
 def _ffmpeg_copy(src: str, dst: str) -> None:
-    cmd = ["ffmpeg", "-y", "-i", src, "-c", "copy", dst]
+    cmd = ["ffmpeg", "-y", "-i", src, "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-b:a", "192k", dst]
     result = subprocess.run(cmd, capture_output=True)
     if result.returncode != 0:
         raise RuntimeError(f"FFmpeg copy failed: {result.stderr.decode()}")

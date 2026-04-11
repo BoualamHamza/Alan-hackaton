@@ -60,9 +60,10 @@ You are a medical data extraction assistant. Your sole task is to read a French 
 | 1     | avatar | video_1_disease.diagnosis.patient_explanation |
 | 2     | visual | video_1_disease.what_is_happening_in_the_body.key_concepts[0] |
 | 3     | avatar | video_1_disease.why_this_patient.patient_explanation |
-| 4     | visual | video_1_disease.test_results[0].result_plain |
+| 4     | visual | video_1_disease.test_results[0].result_plain  ← ONLY include this scene if test_results is non-empty |
 | 5     | avatar | video_1_disease.severity.plain_language |
 
+IMPORTANT: Only include the test_results visual scene (scene 4) if test_results contains at least one entry. If there are no test results, omit scene 4 entirely and go straight from scene 3 to scene 5.
 Add extra visual scenes for additional key concepts or test results. Keep constraints.
 
 ## Video 2 default scene plan structure

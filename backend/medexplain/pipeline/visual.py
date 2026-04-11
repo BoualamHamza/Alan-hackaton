@@ -139,6 +139,14 @@ def _try_render_card(
             if results:
                 render_test_results_card(results, output_path)
                 return True
+            # No test results — fall back to key concepts card so no placeholder appears
+            what = pdo.video_1_disease.what_is_happening_in_the_body
+            if what.key_concepts or what.plain_language:
+                render_key_concepts_card(what, output_path)
+                return True
+            # Last resort: diagnosis card
+            render_diagnosis_card(pdo.video_1_disease.diagnosis, pdo.video_1_disease.severity, output_path)
+            return True
 
     return False
 

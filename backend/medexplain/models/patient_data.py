@@ -92,11 +92,11 @@ class Medication(BaseModel):
     plain_language: str
     dosage: str
     frequency: str
-    timing: str
-    form: str  # tablet | capsule | liquid | injection | patch | other
-    with_food: bool
-    duration: str
-    visual_cue: str
+    timing: str = "as directed"
+    form: str = "other"  # tablet | capsule | liquid | injection | patch | other
+    with_food: bool = False
+    duration: str = "as prescribed"
+    visual_cue: str = "medication pill bottle, clean medical photography"
 
 
 class Warning(BaseModel):

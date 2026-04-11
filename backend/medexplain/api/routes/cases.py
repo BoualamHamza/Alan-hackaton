@@ -76,11 +76,14 @@ async def _run_generation_pipeline(
         _, script_v2 = await loop.run_in_executor(None, generate_script, pdo, 2)
 
         # Step 6 — run the full video pipeline (async, both videos concurrent)
+        # Use a per-case subdirectory so concurrent/sequential cases never overwrite each other
+        case_output_dir = os.path.join(settings.output_dir, case_id)
+        os.makedirs(case_output_dir, exist_ok=True)
         video_1_path, video_2_path = await run_pipeline(
             pdo=pdo,
             video_1_script=script_v1,
             video_2_script=script_v2,
-            output_dir=settings.output_dir,
+            output_dir=case_output_dir,
         )
 
         # Step 7 — update store with results
@@ -205,5 +208,9 @@ def get_video(case_id: str, video_number: int) -> FileResponse:
     return FileResponse(
         path=video_path,
         media_type="video/mp4",
-        filename=f"video_{video_number}.mp4",
+        headers={
+            "Content-Disposition": "inline",
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "no-cache",
+        },
     )

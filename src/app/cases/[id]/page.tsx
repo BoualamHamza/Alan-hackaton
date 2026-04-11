@@ -216,6 +216,7 @@ function VideosReady({ caseId, videos }: { caseId: string; videos: VideoInfo[] }
           <video
             controls
             preload="metadata"
+            crossOrigin="anonymous"
             className="w-full"
             src={`${API_BASE}/cases/${caseId}/videos/${idx + 1}`}
           >
