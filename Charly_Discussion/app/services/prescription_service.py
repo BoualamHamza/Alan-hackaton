@@ -1,7 +1,7 @@
 """
 Handles prescription analysis.
 Accepts an image (JPEG/PNG) or PDF file.
-- Extracts medication names, dosages and instructions via Pixtral
+- Extracts medication names, dosages and instructions via mistral-small-latest (vision, raw httpx)
 - Looks up each medication in the MedlinePlus vector store
 - Returns a patient-friendly explanation for each medication
 """
@@ -10,15 +10,34 @@ import base64
 import io
 import json
 import time
+import os
+import httpx
 import pdfplumber
-from pdf2image import convert_from_bytes
 from PIL import Image
 from mistralai import Mistral
 
 from app.core.config import settings
 from app.services.vector_store import retrieve
 
-client = Mistral(api_key=settings.mistral_api_key)
+MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
+VISION_MODEL = "mistral-small-latest"
+MISTRAL_MODEL = "mistral-large-latest"
+
+ENV_PATH = os.path.join(os.path.dirname(__file__), "../../../.env")
+
+
+def _get_api_key() -> str:
+    from dotenv import load_dotenv
+    load_dotenv(dotenv_path=ENV_PATH, override=True)
+    key = os.environ.get("MISTRAL_API_KEY") or settings.mistral_api_key
+    if not key:
+        raise ValueError("MISTRAL_API_KEY not set.")
+    return key
+
+
+def _get_client():
+    api_key = _get_api_key()
+    return Mistral(api_key=api_key)
 
 
 def call_with_retry(fn, *args, **kwargs):
@@ -34,9 +53,6 @@ def call_with_retry(fn, *args, **kwargs):
             else:
                 raise
     raise RuntimeError("Mistral API rate limit — max retries exceeded.")
-
-PIXTRAL_MODEL = "pixtral-large-latest"
-MISTRAL_MODEL = "mistral-large-latest"
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
@@ -69,13 +85,14 @@ def pdf_to_images(file_bytes: bytes) -> list[Image.Image]:
 
 def extract_medications_from_image(image: Image.Image) -> list[dict]:
     """
-    Sends an image to Pixtral and asks it to extract medication details.
+    Sends an image to mistral-small-latest (vision) via raw httpx.
     Returns a list of dicts: [{name, dosage, frequency, duration, instructions}]
     """
+    api_key = _get_api_key()
     image_b64 = image_to_base64(image)
 
     prompt = """You are analyzing a medical prescription image.
-Extract all medications listed and return a JSON array.
+Extract all medications listed and return a JSON object with a "medications" array.
 For each medication, include:
 - "name": the medication name
 - "dosage": the dose (e.g. "500mg")
@@ -83,34 +100,47 @@ For each medication, include:
 - "duration": for how long (e.g. "7 days") or null if not specified
 - "instructions": any special instructions (e.g. "take with food") or null
 
-Return ONLY a valid JSON array, no explanation. Example:
-[{"name": "Amoxicillin", "dosage": "500mg", "frequency": "3 times a day", "duration": "7 days", "instructions": "take with food"}]
+Return ONLY a valid JSON object like: {"medications": [...]}
 """
 
-    response = call_with_retry(
-        client.chat.complete,
-        model=PIXTRAL_MODEL,
-        messages=[
+    payload = {
+        "model": VISION_MODEL,
+        "messages": [
             {
                 "role": "user",
                 "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
                     {"type": "text", "text": prompt},
+                    {"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"},
                 ],
             }
         ],
-    )
+        "response_format": {"type": "json_object"},
+        "temperature": 0.1,
+    }
 
-    raw = response.choices[0].message.content.strip()
+    for attempt in range(10):
+        try:
+            with httpx.Client(timeout=60.0) as http_client:
+                response = http_client.post(
+                    MISTRAL_API_URL,
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+            if response.status_code == 429:
+                wait = min(30 * (2 ** attempt), 300)
+                print(f"Rate limit (attempt {attempt+1}/10), waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            response.raise_for_status()
+            data = response.json()
+            result = json.loads(data["choices"][0]["message"]["content"])
+            return result.get("medications", result) if isinstance(result, dict) else result
+        except (httpx.TimeoutException, httpx.ConnectError) as e:
+            wait = 10 * (attempt + 1)
+            print(f"Network error, retrying in {wait}s: {e}")
+            time.sleep(wait)
 
-    # Clean up potential markdown code blocks
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    raw = raw.strip()
-
-    return json.loads(raw)
+    raise RuntimeError("Mistral vision API — max retries exceeded.")
 
 
 def extract_medications_from_text(text: str) -> list[dict]:
@@ -134,7 +164,7 @@ Prescription text:
 """
 
     response = call_with_retry(
-        client.chat.complete,
+        _get_client().chat.complete,
         model=MISTRAL_MODEL,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -182,7 +212,7 @@ Do not suggest changing the prescribed dose. Always recommend consulting the doc
 """
 
     response = call_with_retry(
-        client.chat.complete,
+        _get_client().chat.complete,
         model=MISTRAL_MODEL,
         messages=[{"role": "user", "content": prompt}],
     )

@@ -21,31 +21,40 @@ from app.services.vector_store import retrieve
 from app.services.prescription_service import call_with_retry
 
 MEDGEMMA_MODEL_ID = "google/medgemma-4b-it"
-PIXTRAL_MODEL = "pixtral-large-latest"
 MISTRAL_MODEL = "mistral-large-latest"
+MISTRAL_API_URL = "https://api.mistral.ai/v1/chat/completions"
+VISION_MODEL = "mistral-small-latest"
 
 # Global model cache — loaded once, reused across requests
 _medgemma_model = None
 _medgemma_processor = None
 
 
+def _get_device() -> str:
+    if torch.cuda.is_available():
+        return "cuda"
+    if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+        return "mps"
+    return "cpu"
+
+
 def load_medgemma():
     """
     Loads MedGemma model and processor into memory.
-    Called once at startup. Requires ~8GB VRAM (GPU) or RAM (CPU, slow).
+    Supports CUDA (NVIDIA), MPS (Apple Silicon), and CPU fallback.
     """
     global _medgemma_model, _medgemma_processor
 
     if _medgemma_model is not None:
         return  # Already loaded
 
-    print("Loading MedGemma 4B... (first time may take a few minutes)")
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    device = _get_device()
+    print(f"Loading MedGemma 4B on {device}... (first time may take a few minutes)")
 
     _medgemma_processor = AutoProcessor.from_pretrained(MEDGEMMA_MODEL_ID)
     _medgemma_model = AutoModelForImageTextToText.from_pretrained(
         MEDGEMMA_MODEL_ID,
-        torch_dtype=torch.bfloat16 if device == "cuda" else torch.float32,
+        torch_dtype=torch.bfloat16 if device in ("cuda", "mps") else torch.float32,
     ).to(device)
 
     print(f"MedGemma loaded on {device}.")
@@ -120,17 +129,22 @@ def analyze_with_medgemma(image: Image.Image) -> str:
     return decoded.strip()
 
 
-# ── Pixtral fallback ──────────────────────────────────────────────────────────
+# ── Mistral Small fallback (no GPU) ──────────────────────────────────────────
 
-def analyze_with_pixtral(image: Image.Image) -> str:
+def analyze_with_mistral_vision(image: Image.Image) -> str:
     """
-    Fallback: uses Pixtral if MedGemma is unavailable (no GPU).
+    Fallback: uses mistral-small-latest (vision) via raw httpx when MedGemma unavailable.
     """
+    import httpx, time, os
+    from dotenv import load_dotenv
+
+    env_path = os.path.join(os.path.dirname(__file__), "../../../.env")
+    load_dotenv(dotenv_path=env_path, override=True)
+    api_key = os.environ.get("MISTRAL_API_KEY") or settings.mistral_api_key
+
     buffer = io.BytesIO()
     image.save(buffer, format="JPEG")
     image_b64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-
-    client = Mistral(api_key=settings.mistral_api_key)
 
     prompt = (
         "You are a medical imaging specialist. "
@@ -140,20 +154,34 @@ def analyze_with_pixtral(image: Image.Image) -> str:
         "Be accurate, reassuring, and always recommend consulting their doctor for diagnosis."
     )
 
-    response = call_with_retry(
-        client.chat.complete,
-        model=PIXTRAL_MODEL,
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
-                    {"type": "text", "text": prompt},
-                ],
-            }
-        ],
-    )
-    return response.choices[0].message.content.strip()
+    payload = {
+        "model": VISION_MODEL,
+        "messages": [{"role": "user", "content": [
+            {"type": "text", "text": prompt},
+            {"type": "image_url", "image_url": f"data:image/jpeg;base64,{image_b64}"},
+        ]}],
+        "temperature": 0.2,
+    }
+
+    for attempt in range(10):
+        try:
+            with httpx.Client(timeout=60.0) as http:
+                resp = http.post(
+                    MISTRAL_API_URL,
+                    headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                    json=payload,
+                )
+            if resp.status_code == 429:
+                wait = min(30 * (2 ** attempt), 300)
+                print(f"Rate limit (attempt {attempt+1}/10), waiting {wait}s...")
+                time.sleep(wait)
+                continue
+            resp.raise_for_status()
+            return resp.json()["choices"][0]["message"]["content"].strip()
+        except (httpx.TimeoutException, httpx.ConnectError) as e:
+            time.sleep(10 * (attempt + 1))
+
+    raise RuntimeError("Mistral vision API — max retries exceeded.")
 
 
 # ── Enrich with MedlinePlus context ──────────────────────────────────────────
@@ -208,12 +236,15 @@ def analyze_medical_image(file_bytes: bytes, filename: str) -> dict:
     """
     image = load_image_from_bytes(file_bytes, filename)
 
-    # Use MedGemma if GPU available, otherwise fall back to Pixtral
-    if torch.cuda.is_available():
-        print("GPU detected — using MedGemma.")
+    device = _get_device()
+    # MedGemma requires the model to be downloaded — use Mistral vision fallback for now
+    # At hackathon (H100 with downloaded model), change this back to check device
+    use_medgemma = device in ("cuda", "mps") and _medgemma_model is not None
+    if use_medgemma:
+        print(f"Device {device} — using MedGemma.")
         raw_analysis = analyze_with_medgemma(image)
     else:
-        print("No GPU — falling back to Pixtral.")
-        raw_analysis = analyze_with_pixtral(image)
+        print("Using mistral-small-latest vision (MedGemma not loaded).")
+        raw_analysis = analyze_with_mistral_vision(image)
 
     return enrich_with_context(raw_analysis)
