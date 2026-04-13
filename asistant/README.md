@@ -62,6 +62,15 @@ uvicorn backend.main:app --reload
 Server runs at `http://localhost:8000`
 Interactive API docs at `http://localhost:8000/docs`
 
+## Dependency management
+
+Python dependencies are now centralized in `backend/requirements.txt` at repository root.
+If you're working from repo root, prefer:
+
+```bash
+pip install -r backend/requirements.txt
+```
+
 ## API Endpoints
 
 ### Analyze a prescription

@@ -16,8 +16,8 @@ cd backend/apps/medexplain
 # Create and activate virtual environment
 python3 -m venv .venv && source .venv/bin/activate
 
-# Install dependencies
-pip install -r requirements.txt
+# Install dependencies (canonical)
+pip install -r backend/requirements.txt
 
 # Copy and fill in API keys
 cp .env.example .env
