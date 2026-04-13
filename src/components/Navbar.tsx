@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  FolderHeart, LayoutDashboard, FolderOpen, Settings,
+  LayoutDashboard, FolderOpen, Settings,
   Activity, Play, BookOpen, Gamepad2,
   ArrowLeft, Paperclip, Bell, LogOut,
 } from 'lucide-react';
@@ -52,11 +53,9 @@ export default function Sidebar() {
 
       {/* ── Logo ── */}
       <div className="px-5 h-14 flex items-center border-b border-slate-100 flex-shrink-0">
-        <Link href="/cases" className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
-            <FolderHeart size={14} className="text-white" />
-          </div>
-          <span className="text-sm font-bold text-slate-900 tracking-tight">HealthPath</span>
+        <Link href="/cases" className="flex items-center gap-2">
+          <Image src="/logo.jpeg" alt="Hippo" width={32} height={32} className="rounded-full flex-shrink-0" />
+          <span className="text-sm font-bold text-slate-900 tracking-tight">Hippo</span>
         </Link>
       </div>
 
