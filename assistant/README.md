@@ -29,7 +29,7 @@ All medical information is grounded in **MedlinePlus** (U.S. National Library of
 
 ```bash
 git clone <repo-url>
-cd MistralxAllan/backend
+cd MistralxAllan/assistant/backend
 pip install -r requirements.txt
 ```
 
