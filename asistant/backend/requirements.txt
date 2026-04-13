@@ -1,3 +1,0 @@
-# Canonical backend dependencies are now centralized at:
-# backend/requirements.txt
--r ../../backend/requirements.txt
