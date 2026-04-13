@@ -17,9 +17,7 @@
 
 ## 🎬 See Hippo in action
 
-<p align="center">
-  <video src="https://github.com/BoualamHamza/Alan-hackaton/raw/main/demo-hippo.mp4" controls muted playsinline width="320"></video>
-</p>
+<video src="https://github.com/BoualamHamza/Alan-hackaton/raw/main/demo-hippo.mp4" controls muted playsinline width="320"></video>
 
 <p align="center">
   <em>▶️ Can't see the video? <a href="demo-hippo.mp4">Download the demo</a>.</em>
