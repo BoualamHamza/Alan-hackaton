@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="logo.jpeg" alt="Hippo" width="140" />
+  <img src="logo.jpeg" alt="Hippo" />
 </p>
 
 <h1 align="center">Hippo</h1>
