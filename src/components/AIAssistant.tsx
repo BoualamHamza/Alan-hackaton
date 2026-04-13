@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Bot, User, BookOpen, Paperclip, ChevronDown } from 'lucide-react';
+import { X, Send, Loader2, Sparkles, BookOpen } from 'lucide-react';
 
 const ASSISTANT_URL = process.env.NEXT_PUBLIC_ASSISTANT_URL ?? 'http://localhost:8001';
 
@@ -11,9 +11,13 @@ interface Message {
   sources?: string[];
 }
 
+interface AIAssistantProps {
+  open: boolean;
+  onClose: () => void;
+}
+
 // ── Markdown-lite renderer (bold, lists) ─────────────────────────────────────
 function MessageContent({ text }: { text: string }) {
-  // Split into paragraphs, then render bold (**text**) and bullets
   const paragraphs = text.split(/\n\n+/);
   return (
     <div className="space-y-2 text-sm leading-relaxed">
@@ -25,16 +29,14 @@ function MessageContent({ text }: { text: string }) {
             <ul key={i} className="space-y-1 pl-1">
               {lines.filter(Boolean).map((line, j) => (
                 <li key={j} className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-hippo-pink-hot flex-shrink-0" />
                   <span dangerouslySetInnerHTML={{ __html: renderInline(line.replace(/^[-*•]\s*|\d+\.\s*/, '')) }} />
                 </li>
               ))}
             </ul>
           );
         }
-        return (
-          <p key={i} dangerouslySetInnerHTML={{ __html: renderInline(para) }} />
-        );
+        return <p key={i} dangerouslySetInnerHTML={{ __html: renderInline(para) }} />;
       })}
     </div>
   );
@@ -46,7 +48,6 @@ function renderInline(text: string): string {
     .replace(/\*(.+?)\*/g, '<em>$1</em>');
 }
 
-// ── Suggested starter questions ──────────────────────────────────────────────
 const SUGGESTIONS = [
   'What are common side effects of Metformin?',
   'How does Amlodipine lower blood pressure?',
@@ -54,22 +55,18 @@ const SUGGESTIONS = [
   'What should I eat to manage hypertension?',
 ];
 
-export default function AIAssistant() {
-  const [open, setOpen] = useState(false);
+export default function AIAssistant({ open, onClose }: AIAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Scroll to bottom whenever messages change
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, loading]);
 
-  // Focus input when panel opens
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 150);
   }, [open]);
@@ -78,7 +75,6 @@ export default function AIAssistant() {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
-    setShowSuggestions(false);
     setInput('');
     setMessages((prev) => [...prev, { role: 'user', content: trimmed }]);
     setLoading(true);
@@ -89,10 +85,8 @@ export default function AIAssistant() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: trimmed, session_id: sessionId }),
       });
-
       if (!res.ok) throw new Error('Request failed');
       const data = await res.json();
-
       setSessionId(data.session_id);
       setMessages((prev) => [
         ...prev,
@@ -101,7 +95,11 @@ export default function AIAssistant() {
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: "I'm sorry, I couldn't connect to the assistant right now. Please try again.", sources: [] },
+        {
+          role: 'assistant',
+          content: "I'm sorry, I couldn't reach the assistant right now. Please try again.",
+          sources: [],
+        },
       ]);
     } finally {
       setLoading(false);
@@ -121,174 +119,164 @@ export default function AIAssistant() {
     }
     setMessages([]);
     setSessionId(null);
-    setShowSuggestions(true);
   };
 
+  if (!open) return null;
+
   return (
-    <>
-      {/* ── Floating trigger button ── */}
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex items-center gap-2.5 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-lg shadow-blue-200 transition-all hover:scale-105 active:scale-95"
-        >
-          <div className="relative">
-            <Bot size={20} />
-            <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-emerald-400 rounded-full border-2 border-white" />
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-md h-[85vh] bg-white rounded-t-[32px] overflow-hidden flex flex-col animate-[slideUp_0.3s_ease-out]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4 bg-gradient-to-r from-hippo-pink to-hippo-pink-hot text-white flex-shrink-0">
+          <div className="w-11 h-11 rounded-2xl bg-white/25 flex items-center justify-center flex-shrink-0">
+            <Sparkles size={20} className="text-white" strokeWidth={2.5} />
           </div>
-          <span className="text-sm font-semibold">Ask Charlie</span>
-        </button>
-      )}
+          <div className="flex-1 min-w-0">
+            <p className="text-base font-bold leading-tight">Hippo AI</p>
+            <p className="text-[11px] text-white/80">Powered by Mistral + MedlinePlus</p>
+          </div>
+          {messages.length > 0 && (
+            <button
+              onClick={clearChat}
+              className="px-3 py-1.5 text-[11px] font-bold text-white bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+            >
+              Clear
+            </button>
+          )}
+          <button
+            onClick={onClose}
+            className="w-9 h-9 flex items-center justify-center bg-white/20 hover:bg-white/30 rounded-full transition-colors"
+            aria-label="Close chat"
+          >
+            <X size={18} />
+          </button>
+        </div>
 
-      {/* ── Chat panel ── */}
-      {open && (
-        <div className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-24px)] flex flex-col bg-white rounded-2xl shadow-2xl shadow-slate-200/80 border border-slate-200 overflow-hidden"
-             style={{ height: 'min(620px, calc(100vh - 48px))' }}>
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4 min-h-0 bg-hippo-pink-soft/30">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center text-center pt-4 pb-2">
+              <div className="w-16 h-16 rounded-3xl bg-white shadow-[0_8px_24px_-6px_rgba(244,140,186,0.4)] flex items-center justify-center mb-4">
+                <Sparkles size={28} className="text-hippo-pink-hot" strokeWidth={2.5} />
+              </div>
+              <p className="text-base font-bold text-hippo-ink mb-1">Hey Emma, I&apos;m Hippo</p>
+              <p className="text-xs text-hippo-ink-soft max-w-[280px]">
+                Ask me anything about your medications, symptoms, or diagnosis. I use MedlinePlus to give you accurate, reliable answers.
+              </p>
+            </div>
+          )}
 
-          {/* Header */}
-          <div className="flex items-center gap-3 px-4 py-3.5 bg-blue-600 text-white flex-shrink-0">
-            <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
-              <Bot size={17} className="text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-none">Charlie</p>
-              <p className="text-[11px] text-blue-200 mt-0.5">Powered by Mistral + MedlinePlus</p>
-            </div>
-            <div className="flex items-center gap-1">
-              {messages.length > 0 && (
+          {messages.length === 0 && (
+            <div className="space-y-2">
+              <p className="text-[11px] font-bold text-hippo-ink-soft uppercase tracking-wider">Suggested questions</p>
+              {SUGGESTIONS.map((s) => (
                 <button
-                  onClick={clearChat}
-                  className="px-2.5 py-1 text-[11px] font-medium text-blue-200 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                  key={s}
+                  onClick={() => sendMessage(s)}
+                  className="w-full text-left text-xs font-medium text-hippo-ink px-4 py-3 bg-white rounded-2xl shadow-[0_4px_14px_-6px_rgba(244,140,186,0.3)] active:scale-[0.98] transition-transform"
                 >
-                  Clear
+                  {s}
                 </button>
-              )}
-              <button
-                onClick={() => setOpen(false)}
-                className="w-7 h-7 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <ChevronDown size={16} />
-              </button>
+              ))}
             </div>
-          </div>
+          )}
 
-          {/* Messages area */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
-
-            {/* Welcome state */}
-            {messages.length === 0 && (
-              <div className="flex flex-col items-center text-center pt-4 pb-2">
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-3">
-                  <Bot size={28} className="text-blue-500" />
-                </div>
-                <p className="text-sm font-semibold text-slate-800 mb-1">Hi, I'm Charlie</p>
-                <p className="text-xs text-slate-500 max-w-[260px]">
-                  Ask me anything about your medications, symptoms, or diagnosis. I use MedlinePlus to give you accurate, reliable answers.
-                </p>
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                  msg.role === 'user'
+                    ? 'bg-hippo-ink text-white'
+                    : 'bg-white shadow-sm'
+                }`}
+              >
+                {msg.role === 'user' ? (
+                  <span className="text-xs font-bold">E</span>
+                ) : (
+                  <Sparkles size={14} className="text-hippo-pink-hot" strokeWidth={2.5} />
+                )}
               </div>
-            )}
-
-            {/* Suggestion chips */}
-            {showSuggestions && messages.length === 0 && (
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Suggested questions</p>
-                {SUGGESTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => sendMessage(s)}
-                    className="w-full text-left text-xs text-slate-600 px-3 py-2.5 bg-slate-50 hover:bg-blue-50 hover:text-blue-700 border border-slate-200 hover:border-blue-200 rounded-xl transition-all"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {/* Messages */}
-            {messages.map((msg, i) => (
-              <div key={i} className={`flex gap-2.5 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                {/* Avatar */}
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                  msg.role === 'user' ? 'bg-blue-600' : 'bg-slate-100 border border-slate-200'
-                }`}>
-                  {msg.role === 'user'
-                    ? <User size={13} className="text-white" />
-                    : <Bot size={13} className="text-slate-500" />}
-                </div>
-
-                <div className={`flex flex-col gap-1.5 max-w-[80%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                  {/* Bubble */}
-                  <div className={`px-3.5 py-2.5 rounded-2xl ${
+              <div className={`flex flex-col gap-1.5 max-w-[80%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                <div
+                  className={`px-4 py-2.5 rounded-2xl ${
                     msg.role === 'user'
-                      ? 'bg-blue-600 text-white rounded-tr-sm'
-                      : 'bg-slate-50 border border-slate-200 text-slate-800 rounded-tl-sm'
-                  }`}>
-                    {msg.role === 'user'
-                      ? <p className="text-sm">{msg.content}</p>
-                      : <MessageContent text={msg.content} />}
-                  </div>
-
-                  {/* Sources */}
-                  {msg.sources && msg.sources.length > 0 && (
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <BookOpen size={10} className="text-slate-400" />
-                      {msg.sources.slice(0, 3).map((src) => (
-                        <span key={src} className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">
-                          {src}
-                        </span>
-                      ))}
-                    </div>
+                      ? 'bg-hippo-ink text-white rounded-tr-md'
+                      : 'bg-white text-hippo-ink rounded-tl-md shadow-[0_2px_10px_-4px_rgba(244,140,186,0.3)]'
+                  }`}
+                >
+                  {msg.role === 'user' ? (
+                    <p className="text-sm">{msg.content}</p>
+                  ) : (
+                    <MessageContent text={msg.content} />
                   )}
                 </div>
-              </div>
-            ))}
-
-            {/* Loading indicator */}
-            {loading && (
-              <div className="flex gap-2.5">
-                <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center flex-shrink-0">
-                  <Bot size={13} className="text-slate-500" />
-                </div>
-                <div className="px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl rounded-tl-sm">
-                  <div className="flex gap-1 items-center">
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                {msg.sources && msg.sources.length > 0 && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <BookOpen size={10} className="text-hippo-ink-soft" />
+                    {msg.sources.slice(0, 3).map((src) => (
+                      <span key={src} className="text-[10px] text-hippo-ink-soft bg-white px-2 py-0.5 rounded-full">
+                        {src}
+                      </span>
+                    ))}
                   </div>
+                )}
+              </div>
+            </div>
+          ))}
+
+          {loading && (
+            <div className="flex gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-white shadow-sm flex items-center justify-center flex-shrink-0">
+                <Sparkles size={14} className="text-hippo-pink-hot" strokeWidth={2.5} />
+              </div>
+              <div className="px-4 py-3 bg-white rounded-2xl rounded-tl-md shadow-sm">
+                <div className="flex gap-1 items-center">
+                  <span className="w-1.5 h-1.5 bg-hippo-pink-hot rounded-full animate-bounce" />
+                  <span className="w-1.5 h-1.5 bg-hippo-pink-hot rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-1.5 h-1.5 bg-hippo-pink-hot rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
-            )}
-
-            <div ref={bottomRef} />
-          </div>
-
-          {/* Input area */}
-          <div className="flex-shrink-0 border-t border-slate-100 p-3">
-            <div className="flex items-end gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus-within:border-blue-400 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask about your medications, diagnosis…"
-                rows={1}
-                className="flex-1 text-sm text-slate-800 bg-transparent resize-none outline-none placeholder:text-slate-400 max-h-28 leading-relaxed"
-                style={{ scrollbarWidth: 'none' }}
-              />
-              <button
-                onClick={() => sendMessage(input)}
-                disabled={!input.trim() || loading}
-                className="w-8 h-8 flex items-center justify-center bg-blue-600 disabled:bg-slate-200 text-white disabled:text-slate-400 rounded-lg transition-all hover:bg-blue-700 active:scale-95 flex-shrink-0"
-              >
-                {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
-              </button>
             </div>
-            <p className="text-[10px] text-slate-400 text-center mt-2">
-              For informational purposes only — always consult your doctor
-            </p>
-          </div>
+          )}
+          <div ref={bottomRef} />
         </div>
-      )}
-    </>
+
+        {/* Input area */}
+        <div className="flex-shrink-0 px-5 py-4 bg-white border-t border-hippo-pink-soft">
+          <div className="flex items-end gap-2 bg-hippo-pink-soft/50 rounded-2xl px-4 py-3 focus-within:ring-2 focus-within:ring-hippo-pink-hot transition-all">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask about your medications…"
+              rows={1}
+              className="flex-1 text-sm text-hippo-ink bg-transparent resize-none outline-none placeholder:text-hippo-ink-soft max-h-28 leading-relaxed"
+              style={{ scrollbarWidth: 'none' }}
+            />
+            <button
+              onClick={() => sendMessage(input)}
+              disabled={!input.trim() || loading}
+              className="w-10 h-10 flex items-center justify-center bg-hippo-pink-hot disabled:bg-hippo-pink-soft text-white disabled:text-hippo-ink-soft rounded-full transition-all active:scale-95 flex-shrink-0"
+            >
+              {loading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+            </button>
+          </div>
+          <p className="text-[10px] text-hippo-ink-soft text-center mt-2">
+            For informational purposes only — always consult your doctor
+          </p>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+      `}</style>
+    </div>
   );
 }

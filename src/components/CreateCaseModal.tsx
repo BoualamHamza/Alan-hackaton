@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { X, Mic, MicOff, Upload, FileText, Trash2, ChevronRight, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { X, Mic, MicOff, Upload, FileText, Trash2, ChevronRight, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { specialties } from '@/lib/mockData';
 import { MedicalCase } from '@/types';
 import { createCase } from '@/lib/api';
@@ -12,6 +12,9 @@ interface CreateCaseModalProps {
 }
 
 type Step = 1 | 2 | 3;
+
+const inputClass =
+  'w-full px-4 py-3 bg-hippo-pink-soft/50 rounded-2xl text-sm text-hippo-ink placeholder:text-hippo-ink-soft focus:outline-none focus:ring-2 focus:ring-hippo-pink-hot transition-all';
 
 export default function CreateCaseModal({ onClose, onCreate }: CreateCaseModalProps) {
   const [step, setStep] = useState<Step>(1);
@@ -59,19 +62,15 @@ export default function CreateCaseModal({ onClose, onCreate }: CreateCaseModalPr
       setIsRecording(true);
       setRecordingTime(0);
 
-      timerRef.current = setInterval(() => {
-        setRecordingTime((t) => t + 1);
-      }, 1000);
+      timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
     } catch {
       alert('Microphone access denied. Please allow microphone permissions.');
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current) {
-      mediaRecorderRef.current.stop();
-      mediaRecorderRef.current = null;
-    }
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -95,6 +94,7 @@ export default function CreateCaseModal({ onClose, onCreate }: CreateCaseModalPr
     e.preventDefault();
     setIsDragOver(false);
     handleFiles(e.dataTransfer.files);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadedFiles]);
 
   const removeFile = (name: string) =>
@@ -106,7 +106,6 @@ export default function CreateCaseModal({ onClose, onCreate }: CreateCaseModalPr
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  // Submit — sends multipart form data to the backend
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setSubmitError(null);
@@ -119,13 +118,8 @@ export default function CreateCaseModal({ onClose, onCreate }: CreateCaseModalPr
     fd.append('summary', form.summary);
     fd.append('symptoms', form.symptoms);
     fd.append('hasVoiceNote', voiceBlob ? 'true' : 'false');
-
-    for (const file of uploadedFiles) {
-      fd.append('documents', file);
-    }
-    if (voiceBlob) {
-      fd.append('voiceNote', voiceBlob, 'voice_note.webm');
-    }
+    for (const file of uploadedFiles) fd.append('documents', file);
+    if (voiceBlob) fd.append('voiceNote', voiceBlob, 'voice_note.webm');
 
     try {
       const newCase = await createCase(fd);
@@ -136,276 +130,211 @@ export default function CreateCaseModal({ onClose, onCreate }: CreateCaseModalPr
     }
   };
 
-  const isStep1Valid = form.title && form.specialty && form.doctorName && form.visitDate;
-  const isStep2Valid = form.summary || voiceBlob;
-
-  const steps = [
-    { num: 1, label: 'Consultation Info' },
-    { num: 2, label: 'Your Notes' },
-    { num: 3, label: 'Documents' },
-  ];
+  const isStep1Valid = !!(form.title && form.specialty && form.doctorName && form.visitDate);
+  const isStep2Valid = !!(form.summary || voiceBlob);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        className="relative w-full max-w-md h-[92vh] bg-white rounded-t-[32px] flex flex-col overflow-hidden animate-[slideUp_0.3s_ease-out]"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
+        <div className="flex items-center justify-between px-5 pt-5 pb-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">New Health Case</h2>
-            <p className="text-sm text-slate-500 mt-0.5">Document your consultation experience</p>
+            <h2 className="text-[18px] font-extrabold text-hippo-ink leading-tight">New case</h2>
+            <p className="text-[11px] text-hippo-ink-soft mt-0.5">
+              Step {step} of 3 · {['Consultation info', 'Your notes', 'Documents'][step - 1]}
+            </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            className="w-10 h-10 flex items-center justify-center bg-hippo-pink-soft rounded-full active:scale-95 transition-transform"
+            aria-label="Close"
           >
-            <X size={18} />
+            <X size={18} className="text-hippo-ink" strokeWidth={2.5} />
           </button>
         </div>
 
-        {/* Step indicators */}
-        <div className="px-6 py-4 bg-slate-50 border-b border-slate-100">
-          <div className="flex items-center gap-0">
-            {steps.map((s, i) => (
-              <div key={s.num} className="flex items-center flex-1">
-                <div className="flex items-center gap-2">
-                  <div
-                    className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-                      step > s.num
-                        ? 'bg-blue-600 text-white'
-                        : step === s.num
-                        ? 'bg-blue-600 text-white ring-4 ring-blue-100'
-                        : 'bg-white border-2 border-slate-300 text-slate-400'
-                    }`}
-                  >
-                    {step > s.num ? <CheckCircle2 size={14} /> : s.num}
-                  </div>
-                  <span
-                    className={`text-xs font-medium hidden sm:block ${
-                      step >= s.num ? 'text-slate-700' : 'text-slate-400'
-                    }`}
-                  >
-                    {s.label}
-                  </span>
-                </div>
-                {i < steps.length - 1 && (
-                  <div
-                    className={`flex-1 h-0.5 mx-3 rounded ${
-                      step > s.num ? 'bg-blue-600' : 'bg-slate-200'
-                    }`}
-                  />
-                )}
-              </div>
+        {/* Progress bar */}
+        <div className="px-5 mb-2">
+          <div className="flex gap-1.5">
+            {[1, 2, 3].map((n) => (
+              <div
+                key={n}
+                className={`flex-1 h-1.5 rounded-full transition-all ${
+                  n <= step ? 'bg-hippo-pink-hot' : 'bg-hippo-pink-soft'
+                }`}
+              />
             ))}
           </div>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          {/* Step 1: Consultation Info */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
           {step === 1 && (
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Case Title <span className="text-red-500">*</span>
-                </label>
+              <Field label="Case title" required>
                 <input
                   type="text"
                   placeholder="e.g., Lower Back Pain Follow-up"
                   value={form.title}
                   onChange={(e) => updateField('title', e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className={inputClass}
                 />
-              </div>
+              </Field>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Medical Specialty <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    value={form.specialty}
-                    onChange={(e) => updateField('specialty', e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
-                  >
-                    <option value="">Select specialty...</option>
-                    {specialties.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
+              <Field label="Medical specialty" required>
+                <select
+                  value={form.specialty}
+                  onChange={(e) => updateField('specialty', e.target.value)}
+                  className={inputClass}
+                >
+                  <option value="">Select specialty…</option>
+                  {specialties.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </Field>
 
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                    Visit Date <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    value={form.visitDate}
-                    max={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => updateField('visitDate', e.target.value)}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                </div>
-              </div>
+              <Field label="Visit date" required>
+                <input
+                  type="date"
+                  value={form.visitDate}
+                  max={new Date().toISOString().split('T')[0]}
+                  onChange={(e) => updateField('visitDate', e.target.value)}
+                  className={inputClass}
+                />
+              </Field>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Doctor's Name <span className="text-red-500">*</span>
-                </label>
+              <Field label="Doctor's name" required>
                 <input
                   type="text"
                   placeholder="e.g., Dr. Sarah Mitchell"
                   value={form.doctorName}
                   onChange={(e) => updateField('doctorName', e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className={inputClass}
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                  Symptoms (comma-separated)
-                </label>
+              <Field label="Symptoms (comma-separated)">
                 <input
                   type="text"
                   placeholder="e.g., Headache, Fatigue, Nausea"
                   value={form.symptoms}
                   onChange={(e) => updateField('symptoms', e.target.value)}
-                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  className={inputClass}
                 />
-              </div>
+              </Field>
             </div>
           )}
 
-          {/* Step 2: Notes */}
           {step === 2 && (
             <div className="space-y-4">
-              <div>
-                <p className="text-sm text-slate-600 mb-4">
-                  Capture what you discussed with your doctor and what you understood. You can type your notes or record a voice memo.
-                </p>
+              <p className="text-[12px] text-hippo-ink-soft">
+                Capture what you discussed with your doctor and what you understood.
+              </p>
 
-                {/* Mode switcher */}
-                <div className="flex rounded-lg border border-slate-200 p-1 bg-slate-50 mb-4">
-                  <button
-                    onClick={() => setInputMode('text')}
-                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                      inputMode === 'text'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    Text Notes
-                  </button>
-                  <button
-                    onClick={() => setInputMode('voice')}
-                    className={`flex-1 py-2 text-sm font-medium rounded-md transition-all ${
-                      inputMode === 'voice'
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                  >
-                    Voice Note
-                  </button>
-                </div>
-
-                {inputMode === 'text' ? (
-                  <textarea
-                    placeholder="Describe what happened during your consultation, what the doctor told you, what you understood, any questions you still have..."
-                    value={form.summary}
-                    onChange={(e) => updateField('summary', e.target.value)}
-                    rows={8}
-                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-lg text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none leading-relaxed"
-                  />
-                ) : (
-                  <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center gap-4">
-                    {/* Recording button */}
-                    <button
-                      onClick={isRecording ? stopRecording : startRecording}
-                      className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg ${
-                        isRecording
-                          ? 'bg-red-500 hover:bg-red-600 animate-pulse'
-                          : 'bg-blue-600 hover:bg-blue-700'
-                      }`}
-                    >
-                      {isRecording ? (
-                        <MicOff size={28} className="text-white" />
-                      ) : (
-                        <Mic size={28} className="text-white" />
-                      )}
-                    </button>
-
-                    {isRecording && (
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-sm font-mono text-red-500 font-medium">
-                          {formatTime(recordingTime)}
-                        </span>
-                      </div>
-                    )}
-
-                    <p className="text-sm text-slate-500 text-center">
-                      {isRecording
-                        ? 'Recording... Click to stop'
-                        : voiceBlob
-                        ? 'Recording saved! Click to re-record'
-                        : 'Click to start recording your voice note'}
-                    </p>
-
-                    {voiceBlob && !isRecording && (
-                      <div className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 rounded-lg border border-blue-200">
-                        <CheckCircle2 size={16} className="text-blue-600" />
-                        <span className="text-sm text-blue-700 font-medium">
-                          Voice note recorded ({formatTime(recordingTime)}s)
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
+              <div className="flex bg-hippo-pink-soft/50 rounded-full p-1">
+                <button
+                  onClick={() => setInputMode('text')}
+                  className={`flex-1 py-2.5 text-xs font-bold rounded-full transition-all ${
+                    inputMode === 'text' ? 'bg-white text-hippo-ink shadow-sm' : 'text-hippo-ink-soft'
+                  }`}
+                >
+                  Text notes
+                </button>
+                <button
+                  onClick={() => setInputMode('voice')}
+                  className={`flex-1 py-2.5 text-xs font-bold rounded-full transition-all ${
+                    inputMode === 'voice' ? 'bg-white text-hippo-ink shadow-sm' : 'text-hippo-ink-soft'
+                  }`}
+                >
+                  Voice note
+                </button>
               </div>
 
+              {inputMode === 'text' ? (
+                <textarea
+                  placeholder="Describe what the doctor told you, what you understood, and any questions you still have…"
+                  value={form.summary}
+                  onChange={(e) => updateField('summary', e.target.value)}
+                  rows={8}
+                  className={`${inputClass} resize-none leading-relaxed`}
+                />
+              ) : (
+                <div className="bg-hippo-pink-soft/40 rounded-3xl p-8 flex flex-col items-center gap-4">
+                  <button
+                    onClick={isRecording ? stopRecording : startRecording}
+                    className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-[0_12px_32px_-8px_rgba(244,140,186,0.6)] ${
+                      isRecording ? 'bg-red-500 animate-pulse' : 'bg-hippo-pink-hot'
+                    }`}
+                  >
+                    {isRecording ? <MicOff size={28} className="text-white" /> : <Mic size={28} className="text-white" />}
+                  </button>
+
+                  {isRecording && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                      <span className="text-sm font-mono text-red-500 font-bold">
+                        {formatTime(recordingTime)}
+                      </span>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-hippo-ink-soft text-center">
+                    {isRecording
+                      ? 'Recording… tap to stop'
+                      : voiceBlob
+                        ? 'Recording saved — tap to re-record'
+                        : 'Tap to start recording'}
+                  </p>
+
+                  {voiceBlob && !isRecording && (
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-full shadow-sm">
+                      <Check size={14} className="text-hippo-pink-hot" strokeWidth={3} />
+                      <span className="text-xs text-hippo-ink font-bold">
+                        Voice note recorded ({formatTime(recordingTime)})
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {!form.summary && !voiceBlob && (
-                <div className="flex items-start gap-2 px-3 py-2.5 bg-amber-50 rounded-lg border border-amber-200">
-                  <AlertCircle size={15} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                  <p className="text-xs text-amber-700">
-                    Please add text notes or record a voice note to continue.
+                <div className="flex items-start gap-2 px-4 py-3 bg-amber-50 rounded-2xl">
+                  <AlertCircle size={14} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-[11px] text-amber-700">
+                    Add text notes or a voice recording to continue.
                   </p>
                 </div>
               )}
             </div>
           )}
 
-          {/* Step 3: Documents */}
           {step === 3 && (
             <div className="space-y-4">
-              <p className="text-sm text-slate-600">
-                Upload any documents from your consultation — prescriptions, lab results, imaging reports, etc.
+              <p className="text-[12px] text-hippo-ink-soft">
+                Upload any documents from your consultation — prescriptions, lab results, imaging reports.
               </p>
 
-              {/* Drop zone */}
               <div
                 onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
                 onDragLeave={() => setIsDragOver(false)}
                 onDrop={onDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center gap-3 cursor-pointer transition-all ${
+                className={`rounded-3xl p-7 flex flex-col items-center gap-3 cursor-pointer transition-all ${
                   isDragOver
-                    ? 'border-blue-400 bg-blue-50'
-                    : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                    ? 'bg-hippo-pink-soft ring-2 ring-hippo-pink-hot'
+                    : 'bg-hippo-pink-soft/40'
                 }`}
               >
-                <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center">
-                  <Upload size={22} className="text-slate-400" />
+                <div className="w-14 h-14 rounded-2xl bg-white flex items-center justify-center shadow-[0_4px_14px_-4px_rgba(244,140,186,0.4)]">
+                  <Upload size={22} className="text-hippo-pink-hot" strokeWidth={2.5} />
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium text-slate-700">Drop files here or click to browse</p>
-                  <p className="text-xs text-slate-400 mt-1">PDF, JPG, PNG, DOCX up to 10MB each</p>
+                  <p className="text-[13px] font-bold text-hippo-ink">Drop files here or tap to browse</p>
+                  <p className="text-[11px] text-hippo-ink-soft mt-0.5">PDF, JPG, PNG, DOCX — up to 10 MB</p>
                 </div>
                 <input
                   ref={fileInputRef}
@@ -417,27 +346,27 @@ export default function CreateCaseModal({ onClose, onCreate }: CreateCaseModalPr
                 />
               </div>
 
-              {/* File list */}
               {uploadedFiles.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">
+                  <p className="text-[10px] font-bold text-hippo-ink-soft uppercase tracking-wide">
                     Uploaded ({uploadedFiles.length})
                   </p>
                   {uploadedFiles.map((file) => (
                     <div
                       key={file.name}
-                      className="flex items-center gap-3 px-3.5 py-2.5 bg-slate-50 rounded-lg border border-slate-200"
+                      className="flex items-center gap-3 px-4 py-3 bg-hippo-pink-soft/50 rounded-2xl"
                     >
-                      <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <FileText size={14} className="text-blue-600" />
+                      <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center flex-shrink-0">
+                        <FileText size={14} className="text-hippo-pink-hot" strokeWidth={2.5} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
-                        <p className="text-xs text-slate-400">{formatFileSize(file.size)}</p>
+                        <p className="text-[12px] font-bold text-hippo-ink truncate">{file.name}</p>
+                        <p className="text-[10px] text-hippo-ink-soft">{formatFileSize(file.size)}</p>
                       </div>
                       <button
                         onClick={() => removeFile(file.name)}
-                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        className="p-2 text-hippo-ink-soft active:text-red-500"
+                        aria-label="Remove"
                       >
                         <Trash2 size={14} />
                       </button>
@@ -447,8 +376,8 @@ export default function CreateCaseModal({ onClose, onCreate }: CreateCaseModalPr
               )}
 
               {uploadedFiles.length === 0 && (
-                <p className="text-sm text-center text-slate-400 py-2">
-                  Documents are optional — you can always add them later.
+                <p className="text-[11px] text-center text-hippo-ink-soft py-2">
+                  Documents are optional — you can add them later.
                 </p>
               )}
             </div>
@@ -456,66 +385,80 @@ export default function CreateCaseModal({ onClose, onCreate }: CreateCaseModalPr
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 bg-white space-y-3">
+        <div className="px-5 py-4 bg-white border-t border-hippo-pink-soft space-y-3">
           {submitError && (
-            <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 rounded-lg border border-red-200">
-              <AlertCircle size={15} className="text-red-500 mt-0.5 flex-shrink-0" />
-              <p className="text-xs text-red-700">{submitError}</p>
+            <div className="flex items-start gap-2 px-3 py-2.5 bg-red-50 rounded-2xl">
+              <AlertCircle size={14} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-[11px] text-red-700">{submitError}</p>
             </div>
           )}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <button
-              onClick={() => step > 1 ? setStep((s) => (s - 1) as Step) : onClose()}
+              onClick={() => (step > 1 ? setStep((s) => (s - 1) as Step) : onClose())}
               disabled={isSubmitting}
-              className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-40"
+              className="px-5 py-3 text-xs font-bold text-hippo-ink-soft active:bg-hippo-pink-soft rounded-full transition-colors disabled:opacity-40"
             >
               {step === 1 ? 'Cancel' : 'Back'}
             </button>
 
-            <div className="flex items-center gap-3">
-              <div className="flex gap-1.5">
-                {[1, 2, 3].map((n) => (
-                  <div
-                    key={n}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${
-                      n === step ? 'bg-blue-600 w-4' : n < step ? 'bg-blue-300' : 'bg-slate-200'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {step < 3 ? (
-                <button
-                  onClick={() => setStep((s) => (s + 1) as Step)}
-                  disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
-                  className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-                >
-                  Continue
-                  <ChevronRight size={15} />
-                </button>
-              ) : (
-                <button
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="flex items-center gap-2 px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 size={15} className="animate-spin" />
-                      Creating…
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle2 size={15} />
-                      Create Case
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
+            {step < 3 ? (
+              <button
+                onClick={() => setStep((s) => (s + 1) as Step)}
+                disabled={step === 1 ? !isStep1Valid : !isStep2Valid}
+                className="flex items-center gap-1.5 px-6 py-3 bg-hippo-pink-hot text-white text-xs font-bold rounded-full shadow-[0_8px_20px_-6px_rgba(244,140,186,0.8)] disabled:opacity-40 active:scale-95 transition-all"
+              >
+                Continue
+                <ChevronRight size={14} strokeWidth={3} />
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-6 py-3 bg-hippo-pink-hot text-white text-xs font-bold rounded-full shadow-[0_8px_20px_-6px_rgba(244,140,186,0.8)] disabled:opacity-60 active:scale-95 transition-all"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" strokeWidth={3} />
+                    Creating…
+                  </>
+                ) : (
+                  <>
+                    <Check size={14} strokeWidth={3} />
+                    Create case
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
+
+      <style jsx>{`
+        @keyframes slideUp {
+          from { transform: translateY(100%); }
+          to { transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label className="block text-[11px] font-bold text-hippo-ink mb-1.5 px-1">
+        {label}
+        {required && <span className="text-hippo-pink-hot"> *</span>}
+      </label>
+      {children}
     </div>
   );
 }

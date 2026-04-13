@@ -1,16 +1,53 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+@theme {
+  --color-hippo-pink: #fab9d1;
+  --color-hippo-pink-hot: #f48cba;
+  --color-hippo-pink-soft: #ffe4ef;
+  --color-hippo-bg: #fdf2f7;
+  --color-hippo-ink: #0a0a0a;
+  --color-hippo-ink-soft: #6b6b6b;
+  --color-hippo-card: #ffffff;
+
+  --radius-card: 1.5rem;
+  --radius-tile: 1.25rem;
+  --radius-pill: 9999px;
+
+  --shadow-card: 0 4px 20px -6px rgba(244, 140, 186, 0.25);
+  --shadow-fab: 0 10px 30px -4px rgba(244, 140, 186, 0.6);
 }
 
-body {
+:root {
+  --background: var(--color-hippo-bg);
+  --foreground: var(--color-hippo-ink);
+}
+
+html, body {
   background: var(--background);
   color: var(--foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 * {
   box-sizing: border-box;
 }
+
+/* Soft sparkle texture for the page background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.6) 0, transparent 2px),
+    radial-gradient(circle at 82% 12%, rgba(255, 255, 255, 0.5) 0, transparent 2px),
+    radial-gradient(circle at 38% 72%, rgba(255, 255, 255, 0.5) 0, transparent 2px),
+    radial-gradient(circle at 68% 88%, rgba(255, 255, 255, 0.4) 0, transparent 2px);
+  background-size: 320px 320px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Hide scrollbars on horizontal rails */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

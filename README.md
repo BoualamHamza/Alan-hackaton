@@ -15,6 +15,18 @@
 
 ---
 
+## 🎬 See Hippo in action
+
+<p align="center">
+  <video src="https://github.com/BoualamHamza/Alan-hackaton/raw/main/demo.mov" controls muted playsinline width="320"></video>
+</p>
+
+<p align="center">
+  <em>▶️ Can't see the video? <a href="demo.mov">Download the demo</a>.</em>
+</p>
+
+---
+
 ## What is Hippo?
 
 Hippo helps patients navigate their health after a doctor visit. It organises your medical cases, surfaces relevant educational videos and articles, runs interactive health games, and lets you chat with an AI assistant that actually understands your situation.
