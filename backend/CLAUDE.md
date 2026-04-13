@@ -11,7 +11,7 @@ All product requirements and design decisions are in `docs/`. Read those files b
 ## Commands
 
 ```bash
-cd medexplain
+cd backend/apps/medexplain
 
 # Create and activate virtual environment
 python3 -m venv .venv && source .venv/bin/activate
@@ -23,7 +23,7 @@ pip install -r requirements.txt
 cp .env.example .env
 
 # Run the API
-uvicorn main:app --reload
+uvicorn backend.main:app --reload
 
 # Run all tests
 pytest
@@ -109,4 +109,4 @@ The orchestrator (`orchestrator.py`) runs both videos concurrently via `asyncio.
 
 All external services are mocked. The `sample_pdo` fixture in `tests/conftest.py` provides a valid approved PDO (Alzheimer's report scenario). Video 2 scene plan totals 106s (7 scenes at 14–16s each) — keep it under 110s if modifying the fixture.
 
-Run the full suite before pushing: `pytest` from `medexplain/`.
+Run the full suite before pushing: `pytest` from `backend/apps/medexplain/`.

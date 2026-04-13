@@ -49,14 +49,14 @@ curl -o ../data/medlineplus/mplus_topics.xml \
   https://medlineplus.gov/xml/mplus_topics_2026-04-04.xml
 
 # Parse and index into ChromaDB
-python -m app.services.medlineplus_parser
-python -m app.services.vector_store
+python -m backend.apps.assistant.services.medlineplus_parser
+python -m backend.apps.assistant.services.vector_store
 ```
 
 ### 4. Start the server
 
 ```bash
-python run.py
+uvicorn backend.main:app --reload
 ```
 
 Server runs at `http://localhost:8000`
